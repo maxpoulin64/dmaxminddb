@@ -1,0 +1,9 @@
+{
+	"name": "dmaxminddb",
+	"description": "A D wrapper for libmaxminddb to access GeoIP database",
+	"copyright": "Copyright © 2015, Max-P",
+	"authors": ["Max-P"],
+	"libs": ["maxminddb"],
+	"dependencies": {
+	}
+}
