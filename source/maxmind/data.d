@@ -1,6 +1,7 @@
 module maxmind.data;
 import std.bitmanip : bigEndianToNative;
 import std.conv : to;
+import std.traits;
 
 /**
  * Generic container class that represents a metadata node for the Maxmind database format.
@@ -44,26 +45,30 @@ public abstract class DataNode {
 	 */
 	public static DataNode create(ref Reader data) {
 		byte id = data.read();
+		ulong payloadSize;
 		
 		// Read object type
 		Type type = cast(Type)((id & 0b11100000) >> 5);
+		
+		if(type == Type.Pointer) {
+			return DataNode.followPointer(id, data);
+		}
 		
 		if(type == Type.Extended) {
 			type = cast(Type)(data.read() + 7);
 		}
 		
 		// Read payload size
-		ulong payloadSize = id & 0b00011111;
+		payloadSize = id & 0b00011111;
 		
 		if(payloadSize >= 29) final switch(payloadSize) {
-			case 29: payloadSize = 29    + bigEndianToNative!uint(data.read!4(1)); break;
-			case 30: payloadSize = 285   + bigEndianToNative!uint(data.read!4(2)); break;
-			case 31: payloadSize = 65821 + bigEndianToNative!uint(data.read!4(3)); break;
+			case 29: payloadSize = data.read!uint(1) + 29;    break;
+			case 30: payloadSize = data.read!uint(2) + 285;   break;
+			case 31: payloadSize = data.read!uint(3) + 65821; break;
 		}
 		
 		// Construct the object node
 		switch(type) {
-			case Type.Pointer:        assert(false, "Unimplemented type: Pointer");
 			case Type.String:         return new String        (type, data, payloadSize);
 			case Type.Double:         return new Number!double (type, data, payloadSize);
 			case Type.Binary:         return new Binary        (type, data, payloadSize);
@@ -83,16 +88,36 @@ public abstract class DataNode {
 		}
 	}
 	
+	/// ditto
+	public static DataNode create(Reader r) {
+		return DataNode.create(r);
+	}
+	
 	/**
 	 * Creates a new node using a raw data slice with an optional offset to the beginning of the data section.
 	 * @see create(ref Reader data)
 	 */
 	public static DataNode create(ubyte[] data, ulong offset = 0) {
-		Reader reader = Reader(data, offset);
-		return DataNode.create(reader);
+		return DataNode.create(Reader(data, offset));
 	}
 	
-
+	/**
+	 * Decodes and follows a pointer type
+	 */
+	public static DataNode followPointer(ubyte id, ref Reader data) {
+		uint extrabits = id & 0b00000111;
+		ulong jump;
+		
+		final switch((id &0b00011000) >> 3) {
+			case 0: jump = data.read!uint(1, extrabits) + 0;      break;
+			case 1: jump = data.read!uint(2, extrabits) + 2048;   break;
+			case 2: jump = data.read!uint(3, extrabits) + 526336; break;
+			case 3: jump = data.read!uint(4);                     break;
+		}
+		
+		return DataNode.create(data.newReader(jump));
+	}
+	
 	
 	/**
 	 * Generic binary data type
@@ -136,7 +161,7 @@ public abstract class DataNode {
 		
 		public this(Type type, ref Reader data, ulong actualSize) {
 			super(type);
-			this._value = bigEndianToNative!T(data.read!(T.sizeof)(actualSize));
+			this._value = data.read!T(actualSize);
 		}
 		
 		@property public T value() {
@@ -266,14 +291,14 @@ public abstract class DataNode {
 			CastOutput output = cast(CastOutput)(this);
 			
 			if(output is null) {
-				throw new Exception("Invalid conversion");
+				throw new Exception("Invalid conversion from " ~ this.type.to!string ~ " to " ~ T.stringof);
 			}
 			
 			return output;
 		}
 		
 		     static if(is(T == string))  return conv!String.value;
-		else static if(is(T == double))  return conv!(Number!double);
+		else static if(is(T == double))  return conv!(Number!double).value;
 		else static if(is(T == ubyte[])) return conv!Binary.data;
 		else static if(is(T == ushort))  return conv!(Number!ushort).value;
 		else static if(is(T == uint))    return conv!(Number!uint).value;
@@ -282,8 +307,63 @@ public abstract class DataNode {
 		else static if(is(T == bool))    return conv!Boolean.value;
 		else static if(is(T == float))   return conv!(Number!float).value;
 		else {
-			static assert(false, "Unknown output conversion");
+			static assert(false, "Unknown output conversion to " ~ T.stringof);
 		}
+	}
+	
+	
+	/**
+	 * Attemps to convert the current node to a Map node
+	 */
+	public Map asMap() {
+		Map m = cast(Map) this;
+		
+		if(m is null) {
+			throw new Exception("Using a node of type " ~ this.type.to!string ~ " as a map.");
+		}
+		
+		return m;
+	}
+	
+	/**
+	 * Provide a way to export an entire map as an associative array of the specified type
+	 */
+	public T[string] getMap(T)() {
+		Map m = this.asMap();
+		T[string] map;
+		
+		foreach(key, node; m._map) {
+			map[key] = node.get!T;
+		}
+		
+		return map;
+	}
+	
+	
+	/**
+	 * Attempts to convert the current node to an Array node
+	 */
+	public Array asArray() {
+		Array a = cast(Array) this;
+		
+		if(a is null) {
+			throw new Exception("Using a node of type " ~ this.type.to!string ~ " as an array");
+		}
+		return a;
+	}
+		
+	/**
+	 * Provide a way to export the entire array as a specific type
+	 */
+	public T[] getArray(T)() {
+		Array a = this.asArray();
+		T[] arr = new T[a._values.length];
+		
+		for(ulong i = 0; i < arr.length; i++) {
+			arr[i] = a._values[i].get!T;
+		}
+		
+		return arr;
 	}
 }
 
@@ -329,16 +409,20 @@ package struct Reader {
 	
 	
 	/**
-	 * Reads $length bytes from the database into a fixed-size array of $outbytes.
+	 * Reads $length bytes from the database and convert it to a native type of the appropriate endianness
 	 */
-	ubyte[outbytes] read(int outbytes)(ulong length) {
-		ubyte[outbytes] output = 0;
-		
-		if(length > 0) {
-			output[outbytes-length..outbytes] = this.read(length);
-		}
-		
-		return output;
+	T read(T)(ulong length) {
+		ubyte[T.sizeof] buffer = 0;
+		buffer[$-length..$] = this.read(length);
+		return bigEndianToNative!T(buffer);
+	}
+	
+	
+	/**
+	 * Reads $length byte into an integer type with the appropriate endianness and append extra most significant bits
+	 */
+	T read(T)(ulong length, T extrabits) if(isIntegral!T) {
+		return this.read!T(length) + (extrabits << (length*8));
 	}
 	
 	

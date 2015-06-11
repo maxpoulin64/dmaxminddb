@@ -1,0 +1,9 @@
+{
+	"name": "example",
+	"description": "An example of use for the dmaxminddb library",
+	"copyright": "Copyright © 2015, Max-P",
+	"authors": ["Max-P"],
+	"dependencies": {
+		"dmaxminddb": {"version": "~master", "path": "../"}
+	}
+}
