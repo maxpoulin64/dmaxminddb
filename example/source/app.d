@@ -5,20 +5,20 @@ import std.stdio;
  * Program entry point: takes an IP address as the input, and returns a
  */
 int main(string[] args) {
-	if(args.length < 2) {
-		stderr.writeln("This program requires an IP address as its only argument");
+	if(args.length < 3) {
+		stderr.writeln("Usage: dmaxminddb database-file ip-address");
 		return -1;
 	}
 	
-	auto db = new Database("/usr/share/GeoIP/GeoLite2-City.mmdb");
-	auto node = db.lookup(args[1]);
+	auto db = new Database(args[1]);
+	auto result = db.lookup(args[2]);
 	
-	if(node is null) {
+	if(result is null) {
 		writeln("IP address not found in database.");
 		return -1;
 	}
 	else {
-		printNode(node); writeln();
+		printNode(result); writeln();
 		return 0;
 	}
 }
@@ -59,14 +59,19 @@ void printNode(DataNode node, int indent = 0) {
 		
 		case DataNode.Type.Map:
 			writeln("{");
+			int first = 0;
 			
 			foreach(key, subnode; cast(DataNode.Map) node) {
+				if(first++) {
+					writeln(",");
+				}
+				
 				writeIndent(indent+1);
 				write("\"" ~ key ~ "\": ");
 				printNode(subnode, indent+1);
-				writeln(",");
 			}
 			
+			writeln();
 			writeIndent(indent);
 			write("}");
 			break;
@@ -81,13 +86,19 @@ void printNode(DataNode node, int indent = 0) {
 		
 		case DataNode.Type.Array:
 			writeln("[");
+			int first;
 			
 			foreach(key, subnode; cast(DataNode.Array) node) {
+				if(first++) {
+					writeln(",");
+				}
+				
 				writeIndent(indent);
 				printNode(subnode, indent+1);
 				writeln(",");
 			}
 			
+			writeln();
 			writeIndent(indent);
 			write("]");
 			break;

@@ -226,16 +226,6 @@ public abstract class DataNode {
 			
 			return 0;
 		}
-		
-		/** Allow accessing the map as an associative array */
-		public DataNode opIndex(string key) {
-			return this._map[key];
-		}
-		
-		/** Allow accessing the map as if values were direct sub-objects */
-		public DataNode opDispatch(string key)() {
-			return this[key];
-		}
 	}
 	
 	
@@ -274,11 +264,6 @@ public abstract class DataNode {
 			}
 			
 			return 0;
-		}
-		
-		/** Allow accessing values from the array directly */
-		public DataNode opIndex(ulong key) {
-			return this._values[key];
 		}
 	}
 	
@@ -364,6 +349,33 @@ public abstract class DataNode {
 		}
 		
 		return arr;
+	}
+	
+	
+	/**
+	 * Allow accessing Map values using dot notation
+	 * Note: I put the method here to avoid having to cast objets all over the place
+	 */
+	public DataNode opDispatch(string key)() {
+		return this.asMap()._map[key];
+	}
+	
+	
+	/**
+	 * Allow accessing Map values using the [] operator using string keys
+	 * Note: I put the method here to avoid having to cast objets all over the place
+	 */
+	public DataNode opIndex(string key) {
+		return this.asMap()._map[key];
+	}
+	
+	
+	/**
+	 * Allow accessing Array values using the [] operator using ulong keys
+	 * Note: I put the method here to avoid having to cast objets all over the place
+	 */
+	public DataNode opIndex(ulong key) {
+		return this.asArray()._values[key];
 	}
 }
 
