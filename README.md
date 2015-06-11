@@ -1,19 +1,11 @@
 # dmaxminddb - A reader library for MaxMind's GeoLite2 databases written in D
 
 ## Introduction
-This is a library that reads MaxMind's [GeoLite2](http://dev.maxmind.com/geoip/geoip2/geolite2/) database files. It 
-provides a simple to use API that allows to look up IPv4 and IPv6 adresses and return a parsed tree of objects somewhat
-native to the database format.
+This is a library that reads MaxMind's [GeoLite2](http://dev.maxmind.com/geoip/geoip2/geolite2/) database files. It provides a simple to use API that allows to look up IPv4 and IPv6 adresses and return a parsed tree of objects somewhat native to the database format.
 
-Since the database format allows for constructions that are not possible in the D language (such as integers and maps
-in the same array), it is not easy to convert records to pure D types. A decoder to JSON might be made in the future
-to avoid the strange `DataNode`.
+Since the database format allows for constructions that are not possible in the D language (such as integers and maps in the same array), it is not easy to convert records to pure D types. A decoder to JSON might be made in the future to avoid the strange `DataNode`.
 
-It can perform an average of 25,000 lookups on the GeoIP-Country database and 40,000 lookups on the GeoIP-Cities
-database. Most of the time is spent parsing the database structure and creating objects. Performance could probably be
-improved if needed by loading the entire database in memory, avoiding all the bitshifting maths used to compress the
-database file.
-
+It can perform an average of 25,000 lookups on the GeoIP-Country database and 40,000 lookups on the GeoIP-Cities database. Most of the time is spent parsing the database structure and creating objects. Performance could probably be improved if needed by loading the entire database in memory, avoiding all the bitshifting maths used to compress the database file.
 
 ## Installation
 If using dub,
@@ -41,6 +33,10 @@ else {
 	writeln("This IP is located in: " ~ result.country.names.en.get!string);
 	return 0;
 }
+```
+
+```plain
+This IP is located in: Canada
 ```
 
 
