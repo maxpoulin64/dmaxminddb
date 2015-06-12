@@ -2,6 +2,7 @@
 	"name": "example",
 	"description": "An example of use for the dmaxminddb library",
 	"copyright": "Copyright © 2015, Max-P",
+	"license": "LGPL-3.0",
 	"authors": ["Max-P"],
 	"dependencies": {
 		"dmaxminddb": {"version": "~master", "path": "../"}

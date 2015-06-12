@@ -2,6 +2,7 @@
 	"name": "dmaxminddb",
 	"description": "A D wrapper for libmaxminddb to access GeoIP database",
 	"copyright": "Copyright © 2015, Max-P",
+	"license": "LGPL-3.0",
 	"authors": ["Max-P"],
 	"targetType": "library"
 }
