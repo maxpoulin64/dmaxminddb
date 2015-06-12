@@ -1,6 +1,6 @@
 {
 	"name": "dmaxminddb",
-	"description": "A D wrapper for libmaxminddb to access GeoIP database",
+	"description": "A reader library for MaxMind's GeoLite2 databases",
 	"copyright": "Copyright © 2015, Max-P",
 	"license": "LGPL-3.0",
 	"authors": ["Max-P"],
