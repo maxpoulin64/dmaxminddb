@@ -44,8 +44,8 @@ public abstract class DataNode {
 	 * Creates a new node of the appropriate type using an existing reader helper as the data source
 	 */
 	public static DataNode create(ref Reader data) {
-		byte id = data.read();
-		ulong payloadSize;
+		byte   id = data.read();
+		size_t payloadSize;
 		
 		// Read object type
 		Type type = cast(Type)((id & 0b11100000) >> 5);
@@ -97,7 +97,7 @@ public abstract class DataNode {
 	 * Creates a new node using a raw data slice with an optional offset to the beginning of the data section.
 	 * @see create(ref Reader data)
 	 */
-	public static DataNode create(ubyte[] data, ulong offset = 0) {
+	public static DataNode create(ubyte[] data, size_t offset = 0) {
 		return DataNode.create(Reader(data, offset));
 	}
 	
@@ -106,7 +106,7 @@ public abstract class DataNode {
 	 */
 	public static DataNode followPointer(ubyte id, ref Reader data) {
 		uint extrabits = id & 0b00000111;
-		ulong jump;
+		size_t jump;
 		
 		final switch((id &0b00011000) >> 3) {
 			case 0: jump = data.read!uint(1, extrabits) + 0;      break;
@@ -129,7 +129,7 @@ public abstract class DataNode {
 			return this._data;
 		}
 		
-		public this(Type type, ref Reader data, ulong payloadSize) {
+		public this(Type type, ref Reader data, size_t payloadSize) {
 			super(type);
 			this._data = data.read(payloadSize);
 		}
@@ -142,7 +142,7 @@ public abstract class DataNode {
 	public static class String : DataNode {
 		protected string _value;
 		
-		public this(Type type, ref Reader data, ulong length) {
+		public this(Type type, ref Reader data, size_t length) {
 			super(type);
 			this._value = cast(string) data.read(length);
 		}
@@ -159,7 +159,7 @@ public abstract class DataNode {
 	public static class Number(T) : DataNode {
 		protected T _value;
 		
-		public this(Type type, ref Reader data, ulong actualSize) {
+		public this(Type type, ref Reader data, size_t actualSize) {
 			super(type);
 			this._value = data.read!T(actualSize);
 		}
@@ -176,7 +176,7 @@ public abstract class DataNode {
 	public static class Boolean : DataNode {
 		protected bool _value;
 		
-		public this(Type type, ref Reader data, ulong value) {
+		public this(Type type, ref Reader data, size_t value) {
 			super(type);
 			this._value = value > 0;
 		}
@@ -197,7 +197,7 @@ public abstract class DataNode {
 		/**
 		 * Constructs the map and loads all the key/value pairs
 		 */
-		public this(Type type, ref Reader data, ulong numValues) {
+		public this(Type type, ref Reader data, size_t numValues) {
 			super(type);
 			
 			while(numValues > 0) {
@@ -238,7 +238,7 @@ public abstract class DataNode {
 		/**
 		 * Constructs the Array as well as all its contained values
 		 */
-		public this(Type type, ref Reader data, ulong length) {
+		public this(Type type, ref Reader data, size_t length) {
 			super(type);
 			
 			while(length > 0) {
@@ -249,13 +249,13 @@ public abstract class DataNode {
 		
 		
 		/** Returns the length of the array */
-		@property public ulong length() {
+		@property public size_t length() {
 			return this._values.length;
 		}
 		
 		
 		/** Allow using foreach over the array of nodes */
-		public int opApply(int delegate(ulong, DataNode) dg) {
+		public int opApply(int delegate(size_t, DataNode) dg) {
 			int result = 0;
 			
 			foreach(key, node; this._values) {
@@ -344,7 +344,7 @@ public abstract class DataNode {
 		Array a = this.asArray();
 		T[] arr = new T[a._values.length];
 		
-		for(ulong i = 0; i < arr.length; i++) {
+		for(size_t i = 0; i < arr.length; i++) {
 			arr[i] = a._values[i].get!T;
 		}
 		
@@ -374,7 +374,7 @@ public abstract class DataNode {
 	 * Allow accessing Array values using the [] operator using ulong keys
 	 * Note: I put the method here to avoid having to cast objets all over the place
 	 */
-	public DataNode opIndex(ulong key) {
+	public DataNode opIndex(size_t key) {
 		return this.asArray()._values[key];
 	}
 }
@@ -389,13 +389,13 @@ package struct Reader {
 	ubyte[] data;
 	
 	/** Pointer to the current offset in the database file */
-	ulong   current;
+	size_t   current;
 	
 	
 	/**
 	 * Constructs a new reader from a slice and a starting offset
 	 */
-	this(ubyte[] data, ulong startOffset = 0) {
+	this(ubyte[] data, size_t startOffset = 0) {
 		this.data = data;
 		this.current = startOffset;
 	}
@@ -405,7 +405,7 @@ package struct Reader {
 	 * Creates a new reader at a different offset: used by the pointer and cache types to go fetch data
 	 * outside of their own location.
 	 */
-	Reader newReader(ulong offset) {
+	Reader newReader(size_t offset) {
 		return Reader(this.data, offset);
 	}
 	
@@ -413,8 +413,8 @@ package struct Reader {
 	/**
 	 * Reads $length bytes from the database
 	 */
-	ubyte[] read(ulong length) {
-		ulong start = this.current;
+	ubyte[] read(size_t length) {
+		size_t start = this.current;
 		this.current += length;
 		return this.data[start..this.current];
 	}
@@ -423,9 +423,9 @@ package struct Reader {
 	/**
 	 * Reads $length bytes from the database and convert it to a native type of the appropriate endianness
 	 */
-	T read(T)(ulong length) {
+	T read(T)(size_t length) {
 		ubyte[T.sizeof] buffer = 0;
-		buffer[$-length..$] = this.read(length);
+		buffer[$-cast(size_t)length..$] = this.read(length);
 		return bigEndianToNative!T(buffer);
 	}
 	
@@ -433,7 +433,7 @@ package struct Reader {
 	/**
 	 * Reads $length byte into an integer type with the appropriate endianness and append extra most significant bits
 	 */
-	T read(T)(ulong length, T extrabits) if(isIntegral!T) {
+	T read(T)(size_t length, T extrabits) if(isIntegral!T) {
 		return this.read!T(length) + (extrabits << (length*8));
 	}
 	
