@@ -357,6 +357,10 @@ public abstract class DataNode {
 	 * Note: I put the method here to avoid having to cast objets all over the place
 	 */
 	public DataNode opDispatch(string key)() {
+		if(key !in this.asMap()._map) {
+			return null;
+		}
+		
 		return this.asMap()._map[key];
 	}
 	
@@ -366,6 +370,10 @@ public abstract class DataNode {
 	 * Note: I put the method here to avoid having to cast objets all over the place
 	 */
 	public DataNode opIndex(string key) {
+		if(key !in this.asMap()._map) {
+			return null;
+		}
+		
 		return this.asMap()._map[key];
 	}
 	
