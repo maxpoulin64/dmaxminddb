@@ -6,6 +6,7 @@ import std.conv : to;
 import std.mmfile;
 import std.regex;
 import std.string;
+import std.bitmanip;
 
 /** Constant byte sequence that marks the beginning of the global metadata section */
 protected const ubyte[] METADATA_MARKER = [0xAB, 0xCD, 0xEF, 'M', 'a', 'x', 'M', 'i', 'n', 'd', '.', 'c', 'o', 'm'];

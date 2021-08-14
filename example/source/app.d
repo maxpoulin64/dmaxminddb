@@ -1,5 +1,6 @@
 import maxmind.db;
 import std.stdio;
+import std.conv;
 
 /**
  * Program entry point: takes an IP address as the input, and returns a
